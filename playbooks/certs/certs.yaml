@@ -1,0 +1,16 @@
+---
+- hosts: mailservers
+  vars:
+    account_email: hello@example.co.uk
+    domain: email.example.co.uk
+  remote_user: root
+
+  tasks:
+  - name: Installl certbot
+    apt:
+      name: certbot
+      state: present
+
+  - name: Get certificate
+    shell:
+      cmd: certbot certonly --noninteractive --standalone -d {{ domain }} --agree-tos --email {{ account_email }}

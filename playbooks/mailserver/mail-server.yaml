@@ -1,0 +1,247 @@
+---
+- hosts: mailservers
+  vars:
+    generate_dkim_keys: False
+    myhostname: email.example.co.uk
+    virtual_mailbox_base: /var/mail/vhosts
+    virtual_mailbox_maps: hash:/etc/postfix/vmailbox
+    virtual_alias_maps: hash:/etc/postfix/virtual
+    postmaster_address: postmaster@example.co.uk
+  remote_user: root
+
+  tasks:
+  - name: Set hostname to email.example.co.uk
+    hostname:
+      name: email.example.co.uk
+
+  - name: Install Postfix & postfix-pcre
+    apt:
+      pkg:
+      - postfix
+      - postfix-pcre
+      force_apt_get: yes
+
+  - name: Install spamassassin, spamc and spamass-milter
+    apt:
+      pkg: 
+      - spamassassin 
+      - spamc
+      - spamass-milter
+      force_apt_get: yes
+
+  - name: Place spamassassin defaults config
+    template:
+      src: templates/spamassassin/etc/default/spamassassin
+      dest: /etc/default/spamassassin
+
+  - name: Place spamassassin defaults milter config
+    template:
+      src: templates/spamassassin/etc/default/spamass-milter
+      dest: /etc/default/spamass-milter
+
+  - name: Place postfix main.cf config
+    template:
+      src: templates/postfix/main.cf.j2
+      dest: /etc/postfix/main.cf
+
+  - name: Place postfix virtual file config
+    template: 
+      src: templates/postfix/virtual
+      dest: /etc/postfix/virtual
+
+  - name: Generate virtual.db map
+    shell:
+      cmd: postmap /etc/postfix/virtual
+
+  - name: Plase postfix vmailbox file config
+    template:
+      src: templates/postfix/vmailbox
+      dest: /etc/postfix/vmailbox
+
+  - name: Generate vmailbox.db map
+    shell:
+      cmd: postmap /etc/postfix/vmailbox
+
+  - name: create /var/mail/vhosts directory
+    file:
+      path: /var/mail/vhosts
+      state: directory
+      owner: root
+      group: mail
+      mode: 0775
+
+  - name: create each directory for each virtual_mailbox_domains
+    file:
+      state: directory
+      owner: root
+      group: mail
+      mode: 0775
+      path: /var/mail/vhosts/{{ item }}
+    loop: "{{ virtual_mailbox_domains|flatten(levels=1) }}"
+
+  - name: Install Opendkim and opendkim-tools
+    apt:
+      pkg: 
+      - opendkim
+      - opendkim-tools
+      force_apt_get: yes
+
+  - name: Add opendkim to postfix group
+    user:
+      name: postfix
+      append: yes
+      groups: opendkim
+
+  - name: Place opendkim.conf file 
+    template:
+      src: templates/opendkim/opendkim.conf
+      dest: /etc/opendkim.conf
+
+  - name: Create /etc/opendkim directory
+    file:
+      path: /etc/opendkim
+      state: directory
+      owner: opendkim
+      group: opendkim
+      mode: go-rw
+
+  - name: Create /etc/opendkim/keys directory
+    file:
+      path: /etc/opendkim/keys
+      state: directory
+      owner: opendkim
+      group: opendkim
+      mode: go-rw
+
+  - name: Place opendkim signing.table file
+    template:
+      src: templates/opendkim/signing.table.j2
+      dest: /etc/opendkim/signing.table
+
+  - name: Place opendkim key.table file
+    template:
+      src: templates/opendkim/key.table.j2
+      dest: /etc/opendkim/key.table
+
+  - name: Place opendkim trusted.hosts file
+    template:
+      src: templates/opendkim/trusted.hosts.j2
+      dest: /etc/opendkim/trusted.hosts
+
+  - name: Place opendkim /etc/default/opendkim file
+    template:
+      src: templates/opendkim/default/opendkim
+      dest: /etc/default/opendkim
+
+  - name: Create directory for dkim keys for each domain
+    file:
+      path: /etc/opendkim/keys/{{ item }}
+      state: directory
+      owner: opendkim
+      group: opendkim
+    loop: "{{ virtual_mailbox_domains|flatten(levels=1) }}"
+
+  - name: Generate opendkim keys for each domain
+    shell:
+      cmd: opendkim-genkey -r -d {{ item }} -D /etc/opendkim/keys/{{ item }} -s default -v
+    loop: "{{ virtual_mailbox_domains|flatten(levels=1) }}"
+    when: generate_dkim_keys == True
+
+  - name: Make opendkim the owner of dkim all keys
+    file:
+      path: /etc/opendkim/keys/{{ item }}/default.private
+      state: file
+      owner: opendkim
+      group: opendkim
+    loop: "{{ virtual_mailbox_domains|flatten(levels=1) }}"
+
+  - name: Create pid file for opendkim /var/run/opendkim/opendkim.pid
+    file:
+      path: /var/run/opendkim/opendkim.pid
+      state: touch
+      owner: opendkim
+      group: opendkim
+
+  - name: Create directory for dkim socket
+    file:
+      path: /var/spool/postfix/opendkim
+      state: directory
+      owner: opendkim
+      group: postfix
+
+  - name: Install OpenDemark
+    apt:
+      name: opendmarc
+      state: present
+      force_apt_get: yes
+
+  - name: Install Dovecot-imapd
+    apt:
+      name: dovecot-imapd
+      state: present
+      force_apt_get: yes
+
+  - name: Install dovecot-sieve & dovecot-lmtpd
+    apt:
+      pkg:
+      - dovecot-sieve
+      - dovecot-managesieved
+      - dovecot-lmtpd
+      force_apt_get: yes
+
+  - name: Copy over dovecot.conf
+    template:
+      src: templates/dovecot/dovecot.conf
+      dest: /etc/dovecot/dovecot.conf
+
+  - name: Copy over Dovecot users file
+    template:
+      src: templates/dovecot/users
+      dest: /etc/dovecot/users
+
+  - name: Create directory /etc/dovecot/sieve
+    file:
+      path: /etc/dovecot/sieve
+      state: directory
+      owner: mail
+      group: mail
+
+  - name: Copy over default.sieve
+    template:
+      src: templates/dovecot/sieve/default.sieve
+      dest: /etc/dovecot/sieve/default.sieve
+
+  - name: Copy over Dovecot config.d templates
+    template:
+      src: '{{ item.src }}'
+      dest: /etc/dovecot/conf.d/{{ item.path }}
+      force: yes
+    with_filetree: templates/dovecot/conf.d/
+    when: item.state == 'file'
+
+  - name: Enable spamassassin service and start
+    service:
+      name: spamassassin
+      enabled: yes
+      state: restarted
+
+  - name: Restart spamass-milter service
+    service:
+      name: spamass-milter
+      enabled: yes
+      state: restarted
+
+  - name: Restart postfix
+    service:
+      name: postfix
+      state: restarted
+
+  - name: Restart dovecot
+    service:
+      name: dovecot
+      state: restarted
+
+  - name: Restart opendkim
+    service:
+      name: opendkim
+      state: restarted

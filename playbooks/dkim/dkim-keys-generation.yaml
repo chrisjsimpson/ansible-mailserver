@@ -1,0 +1,58 @@
+---
+- hosts: mailservers
+  vars:
+  remote_user: root
+
+  tasks:
+
+  - name: About to regenerate DKIM keys
+    debug: 
+      msg: "The DKIM domain keys to be regenerated are: {{ regenerate_dkim_keys_domains }}"
+
+  - pause:
+      prompt: "Check: Have you updated BOTH virtual_mailbox_domains and regenerate_dkim_keys_domains group vars to include the new domain?"
+
+  - name: Place opendkim signing.table file
+    template:
+      src: ../mailserver/templates/opendkim/signing.table.j2
+      dest: /etc/opendkim/signing.table
+  - name: Place opendkim key.table file
+    template:
+      src: ../mailserver/templates/opendkim/key.table.j2
+      dest: /etc/opendkim/key.table
+
+  - name: Place opendkim trusted.hosts file
+    template:
+      src: ../mailserver/templates/opendkim/trusted.hosts.j2
+      dest: /etc/opendkim/trusted.hosts
+
+  - name: Create directory for dkim keys for each domain
+    file:
+      path: /etc/opendkim/keys/{{ item }}
+      state: directory
+      owner: opendkim
+      group: opendkim
+    loop: "{{ virtual_mailbox_domains|flatten(levels=1) }}"
+
+  - name: Generate opendkim keys for each new domain {{ regenerate_dkim_keys_domains }}
+    shell:
+      cmd: opendkim-genkey -r -d {{ item }} -D /etc/opendkim/keys/{{ item }} -s default -v
+    loop: "{{ regenerate_dkim_keys_domains|flatten(levels=1) }}"
+
+  - name: Make opendkim the owner of dkim all keys
+    file:
+      path: /etc/opendkim/keys/{{ item }}/default.private
+      state: file
+      owner: opendkim
+      group: opendkim
+    loop: "{{ regenerate_dkim_keys_domains|flatten(levels=1) }}"
+
+  - name: Restart opendkim
+    service:
+      name: opendkim
+      state: restarted
+
+  - debug:
+      msg: Done! Now set the DKIM key in DNS, find the keys in /etc/opendkim/keys on the server
+
+

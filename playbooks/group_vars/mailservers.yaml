@@ -1,0 +1,2 @@
+virtual_mailbox_domains: ['example.co.uk']
+regenerate_dkim_keys_domains: []

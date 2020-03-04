@@ -1,0 +1,7 @@
+# This tells OpenDKIM that if an email is coming from localhost or from the same domain, then OpenDKIM should not perform DKIM verification on the email
+
+127.0.0.1
+localhost
+{% for domain in virtual_mailbox_domains %}
+{{ domain }}
+{% endfor %}

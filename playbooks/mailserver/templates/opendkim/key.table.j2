@@ -1,0 +1,3 @@
+{% for domain in virtual_mailbox_domains %}
+default._domainkey.{{ domain }} {{ domain }}:default:/etc/opendkim/keys/{{ domain }}/default.private
+{% endfor %}
