@@ -17,7 +17,7 @@ ENABLED=0
 # make sure --max-children is not set to anything higher than 5,
 # unless you know what you're doing.
 
-OPTIONS="--create-prefs --max-children 5 --helper-home-dir"
+OPTIONS="--create-prefs --max-children 5 --helper-home-dir -u debian-spamd --nouser-config"
 
 # Pid file
 # Where should spamd write its PID to file? If you use the -u or
