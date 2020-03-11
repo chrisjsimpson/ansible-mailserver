@@ -38,6 +38,12 @@ spamassassin.
 ansible-playbook playbooks/mail-server.yaml 
 ```
 
+Run the cert renewal for crontab entry
+
+```
+ansible-playbook -i inventory.yaml certs/cron-cert.yaml
+```
+
 ## Regenerate DKIM keys for a single domain
 
 Update group_vars/mailservers.yaml `virtual_mailbox_domains` and

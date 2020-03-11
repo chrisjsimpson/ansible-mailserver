@@ -1,0 +1,15 @@
+---
+- hosts: mailservers
+  vars:
+    account_email: enquiries@karmacomputing.co.uk
+    domain: email.karmacomputing.co.uk
+  remote_user: root
+
+  tasks:
+  - name: Installl certbot crontab
+    cron:
+      name: "Certbot tls certificate renewal"
+      minute: "5"
+      month: "*"
+      day: "20"
+      job: certbot certonly --noninteractive --standalone -d {{ domain }} --agree-tos --email {{ account_email }}
