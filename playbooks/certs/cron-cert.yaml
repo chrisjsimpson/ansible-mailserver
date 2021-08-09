@@ -1,8 +1,8 @@
 ---
 - hosts: mailservers
   vars:
-    account_email: enquiries@karmacomputing.co.uk
-    domain: email.karmacomputing.co.uk
+    account_email: postmaster@example.com
+    domain: email.example.com
   remote_user: root
 
   tasks:

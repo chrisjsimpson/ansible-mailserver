@@ -2,15 +2,33 @@
 
 Ansible configured Postfix & dovecot server
 
-A fullstack but simple mail server (smtp, imap, antispam). Only configuration files, no SQL database. Keep it simple and versioned. Easy to deploy and upgrade. (Inspired by https://github.com/tomav/docker-mailserver)
+A fullstack but simple mail server (smtp, imap, antispam). Only configuration files, no SQL database. Keep it simple and versioned. Easy to deploy and upgrade. (Inspired by cd)
 
+
+## Setup server
+On an ubuntu lts server:
+
+```
+apt update
+apt install -y git ansible
+git clone https://github.com/chrisjsimpson/ansible-mailserver.git
+
+```
 ## How to run
 
 Configure ansible investory file with your host (e.g. ip of a vps instance https://www.vultr.com/?ref=8472727)
 
+If you're running ansible directly on the server:
 ```
 [mailservers]
-192.168.1.1 ansible_user=root
+localhost ansible_user=root ansible_connection=local
+```
+
+Otherwise:
+
+```
+[mailservers]
+<your mailserver ip> ansible_user=root
 ```
 
 ## Configure DNS (so that cert generation passes)
@@ -26,8 +44,17 @@ Configure ansible investory file with your host (e.g. ip of a vps instance https
 
 Run the cert playbook to generate a cert for the server:
 ```
-ansible-playbook playbooks/certs.yaml
+ansible-playbook -i playbooks/inventory.yaml -e account_email=postmaster@example.com -e domain=email.example.com playbooks/certs.yaml
 ```
+
+Where
+
+- `-i` is the inventory.yaml file
+- `-e account_email=postmaster@example.com` the email address used for certbot terms of service
+- `-e domain=email.example.com` the domain of the email server you want a certificate for
+- `playbooks/certs.yaml` contains the automated steps to get a certificate (aka a playbook)
+
+
 
 Run the mail server playbook:
 
@@ -35,25 +62,31 @@ This will configure your server with postfix, dovecot, opendkim and
 spamassassin.
 
 ```
-ansible-playbook playbooks/mail-server.yaml 
+ansible-playbook -i playbooks/inventory.yaml -e myhostname=email.example.com -e postmaster_address=postmaster@example.com -e generate_dkim_keys=True playbooks/mail-server.yaml 
 ```
 
 Run the cert renewal for crontab entry
 
 ```
-ansible-playbook -i inventory.yaml certs/cron-cert.yaml
+ansible-playbook -i playbooks/inventory.yaml -e account_email=postmaster@example.com -e domain=email.example.com playbooks/certs/cron-cert.yaml
 ```
 
 ## Regenerate DKIM keys for a single domain
 
-Update group_vars/mailservers.yaml `virtual_mailbox_domains` and
+Update `playbooks/group_vars/mailservers.yaml`, setting `virtual_mailbox_domains` and
 `regenerate_dkim_keys_domains`. Then ansible will only generate new
 keys for the domain in `regenerate_dkim_keys_domains`. 
+
+e.g:
+```
+virtual_mailbox_domains: ['example.com']
+regenerate_dkim_keys_domains: ['example.com']
+```
 
 Then run the playboook:
 
 ```
-ansible-playbook -i inventory.yaml playbooks/dkim/dkim-keys-generation.yaml
+ansible-playbook -i playbooks/inventory.yaml playbooks/dkim/dkim-keys-generation.yaml
 ```
 
 ## Configure DNS DKIM and SPF

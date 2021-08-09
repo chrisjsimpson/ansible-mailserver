@@ -10,9 +10,9 @@
   remote_user: root
 
   tasks:
-  - name: Set hostname to email.example.co.uk
+  - name: "Set hostname to {{ myhostname }}"
     hostname:
-      name: email.example.co.uk
+      name: "{{ myhostname }}""
 
   - name: Install Postfix & postfix-pcre
     apt:
