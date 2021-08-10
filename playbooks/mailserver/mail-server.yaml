@@ -12,7 +12,7 @@
   tasks:
   - name: "Set hostname to {{ myhostname }}"
     hostname:
-      name: "{{ myhostname }}""
+      name: "{{ myhostname }}"
 
   - name: Install Postfix & postfix-pcre
     apt:
@@ -48,6 +48,11 @@
     template: 
       src: templates/postfix/virtual
       dest: /etc/postfix/virtual
+
+  - name: Place postfix smtp_reply_filter
+    template:
+      src: templates/postfix/smtp_reply_filter
+      dest: /etc/postfix/smtp_reply_filter
 
   - name: Generate virtual.db map
     shell:

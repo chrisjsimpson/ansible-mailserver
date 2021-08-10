@@ -75,3 +75,6 @@ milter_default_action = accept
 milter_protocol = 6
 smtpd_milters = local:opendkim/opendkim.sock,local:spamass/spamass.sock
 non_smtpd_milters = $smtpd_milters
+
+# Gmail IPv6 retry:
+smtp_reply_filter = pcre:/etc/postfix/smtp_reply_filter

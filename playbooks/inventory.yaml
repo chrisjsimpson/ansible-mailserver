@@ -24,7 +24,7 @@
 #192.168.1.110
 
 [mailservers]
-localhost ansible_user=root
+localhost ansible_user=root ansible_connection=local
 
 # If you have multiple hosts following a pattern you can specify
 # them like this:
